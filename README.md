@@ -76,7 +76,7 @@ END_SUCCESS / END_NOT_AVAILABLE / END_NOT_INTERESTED / END_DND
 | END_NOT_AVAILABLE | Fixed | Polite exit — not answered or busy |
 | END_NOT_INTERESTED | Fixed | Polite exit — declined |
 | END_DND | Fixed | DNC acknowledgment |
-| END_CALL | LLM | Terminal node — no speech, no transitions |
+| END_CALL | Fixed | Terminal node — no speech, no transitions |
 
 ---
 
@@ -139,15 +139,12 @@ Content-Type: application/json
   "start": 1000,
   "end": 1900,
   "timezone": "Asia/Kolkata",
-  "retries": 1,
+  "retries": 3,
+  "priorities": [3, 2, 1],
+  "intervals": [1800000, 3600000],
   "context": {
     "name": "Lead Name",
-    "leadId": "row_id",
-    "lead_destination": "",
-    "lead_trip_type": "",
-    "lead_budget": "",
-    "lead_month": "",
-    "lead_group_size": ""
+    "leadId": "row_id"
   }
 }
 ```
@@ -173,54 +170,13 @@ N8N_WEBHOOK_FETCH_LEAD=
 ## Repository Structure
 
 ```
-├── agent.json                  # HoomanLabs agent config (production)
-├── new-agent.json              # HoomanLabs agent config (with call actions)
+├── new-agent.json              # HoomanLabs agent config (push via API)
 ├── flow-2.md                   # Agent flow spec (source of truth)
 ├── pre-call-workflow.json      # n8n pre-call workflow template
 ├── post-call-workflow.json     # n8n post-call workflow template
 ├── google-sheets-schema.md     # CRM sheet column definitions
-├── scenarios-2.0.csv           # 30 simulation scenarios (full suite)
-├── scenarios-edge-cases.csv    # 10 critical edge case scenarios
-├── library/                    # Destination knowledge docs
-│   ├── 01_bali.md
-│   ├── 02_thailand.md
-│   ├── 03_dubai.md
-│   ├── 04_singapore.md
-│   ├── 05_maldives.md
-│   ├── 06_vietnam.md
-│   ├── 07_japan.md
-│   ├── 08_europe.md
-│   ├── 09_mauritius.md
-│   ├── 10_sri_lanka.md
-│   └── domestic/               # 10 domestic destination docs
 ├── .env.example                # Environment variable template
 └── README.md                   # This file
-```
-
----
-
-## Destinations Covered
-
-**International:** Bali, Thailand, Dubai, Singapore, Maldives, Vietnam, Japan, Europe, Mauritius, Sri Lanka
-
-**Domestic:** Rajasthan, Kerala, Goa, Himachal Pradesh, Kashmir, Ladakh, Andaman, Uttarakhand, Northeast India, Lakshadweep
-
----
-
-## Pushing Agent Updates via API
-
-```bash
-# Update existing agent
-curl -X POST https://api.hoomanlabs.com/routes/v1/agents/YOUR_AGENT_ID \
-  -H "Authorization: YOUR_HL_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d @agent.json
-
-# Create new agent
-curl -X POST https://api.hoomanlabs.com/routes/v1/agents/ \
-  -H "Authorization: YOUR_HL_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d @new-agent.json
 ```
 
 ---
