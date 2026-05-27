@@ -43,7 +43,7 @@
           "timeout": 10000,
           "type": "POST",
           "body": "{\"leadId\": \"${context.leadId}\", \"name\": \"${name}\", \"outcome\": \"${outcome}\", \"destination\": \"${destination}\", \"destination_type\": \"${destination_type}\", \"occasion\": \"${occasion}\", \"group_type\": \"${group_type}\", \"travel_month\": \"${travel_month}\", \"budget\": \"${budget}\", \"package_tier\": \"${package_tier}\", \"interest_level\": \"${interest_level}\", \"callback_day\": \"${callback_day}\", \"callback_time\": \"${callback_time}\", \"objection_type\": \"${objection_type}\", \"discussion_note\": \"${discussion_note}\"}",
-          "address": "https://rahuldoesit.app.n8n.cloud/webhook/a24262be-7b21-4487-a2ef-567e54f18a10"
+          "address": "YOUR_N8N_WEBHOOK_URL"
         }
       }
     ],
@@ -57,7 +57,7 @@
           "type": "POST",
           "timeout": 10000,
           "headers": "{\"Content-Type\": \"application/json\"}",
-          "address": "https://rahuldoesit.app.n8n.cloud/webhook/a24262be-7b21-4487-a2ef-567e54f18a10",
+          "address": "YOUR_N8N_WEBHOOK_URL",
           "body": "{\"leadId\": \"${context.leadId}\", \"name\": \"${name}\", \"outcome\": \"not_answered\"}"
         }
       }
