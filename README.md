@@ -17,7 +17,7 @@ Raju does not book trips, quote prices, or give visa details. His only job is to
 | ID | string | Yes |
 | Name | string | Yes |
 | Phone Number | string | Yes |
-| New | boolean | Yes |
+| Status | New | Yes |
 ---
 
 ## Architecture
