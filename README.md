@@ -125,48 +125,6 @@ Every connected call extracts the following via Gemini:
 
 ---
 
-## Triggering a Call (n8n Task API)
-
-```http
-POST https://api.hoomanlabs.com/routes/v1/tasks/
-Authorization: YOUR_HL_API_KEY
-Content-Type: application/json
-
-{
-  "phone": "+91XXXXXXXXXX",
-  "agent": "YOUR_AGENT_ID",
-  "campaign": "YOUR_CAMPAIGN_ID",
-  "start": 1000,
-  "end": 1900,
-  "timezone": "Asia/Kolkata",
-  "retries": 3,
-  "priorities": [3, 2, 1],
-  "intervals": [1800000, 3600000],
-  "context": {
-    "name": "Lead Name",
-    "leadId": "row_id"
-  }
-}
-```
-
----
-
-## Environment Variables
-
-Copy `.env.example` to `.env` and fill in your values. Never commit `.env`.
-
-```
-HL_API_KEY=
-HL_ORG_ID=
-HL_AGENT_ID=
-HL_CAMPAIGN_ID=
-HL_FROM_NUMBER=
-N8N_WEBHOOK_POST_CALL=
-N8N_WEBHOOK_FETCH_LEAD=
-```
-
----
-
 ## Repository Structure
 
 ```
