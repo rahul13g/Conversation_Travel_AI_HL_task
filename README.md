@@ -1,6 +1,6 @@
 # Raju — LetsGo Travel Outbound Voice Agent
 
-An outbound AI voice agent that qualifies travel leads for LetsGo Travel in natural Hinglish. Built on HoomanLabs, triggered via n8n, and backed by Google Sheets as the CRM.
+An outbound AI voice agent that qualifies travel leads for LetsGo Travel in natural Hinglish. Built on HoomanLabs API, triggered via n8n, and backed by Google Sheets as the CRM.
 
 ---
 
@@ -88,20 +88,6 @@ Raju always asks in this order, one question at a time:
 3. Destination — specific or open to suggestions
 4. When they want to travel
 5. Budget — always last, never first
-
----
-
-## Call Configuration
-
-| Setting | Value |
-|---|---|
-| Voice | ElevenLabs, hi-IN, eleven_flash_v2_5 |
-| LLM | GPT-4.1-mini (Azure), temperature 0.6 |
-| STT | Deepgram nova-3, hi-IN, finalizeAfter 3s |
-| Analytics LLM | Gemini 2.5 Flash (Google) |
-| Max call duration | 10 minutes |
-| Idle timeout | 6 seconds, 2 retries |
-| Available hours | Mon–Sat, 10 AM – 7 PM IST |
 
 ---
 
