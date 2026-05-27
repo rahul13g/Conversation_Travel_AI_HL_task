@@ -4,6 +4,12 @@ An outbound AI voice agent that qualifies travel leads for LetsGo Travel in natu
 
 ---
 
+---
+Pre-Call
+<img width="1440" height="900" alt="image" src="https://github.com/user-attachments/assets/51722e8e-08bf-42e5-ba4a-8ab6036847e1" />
+
+---
+
 ## What It Does
 
 When a new lead is added to the Google Sheet, n8n fires a task to HoomanLabs. Raju calls the lead, has a natural Hinglish discovery conversation to understand their trip intent, and books a callback with a human travel expert. Post-call data is written back to the sheet automatically.
@@ -38,6 +44,10 @@ POST /routes/v1/tasks/  →  HoomanLabs
 Google Sheet (row updated with call outcome)
 ```
 
+---
+<img width="1440" height="900" alt="image" src="https://github.com/user-attachments/assets/af5826c9-1bf5-4c48-9701-2a77dfc26a98" />
+
+---
 ---
 
 ## Agent Flow
