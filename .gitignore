@@ -1,0 +1,25 @@
+# Credentials
+.env
+
+# Local Claude settings
+.claude/
+
+# Real lead data
+CRM.xlsx
+SafarSathi-CRM.xlsx
+
+# Binary files
+*.pdf
+
+# Old drafts
+flow.md
+letsgo-base-prompt.md
+letsgo-base-prompt-v2.md
+letsgo-base-prompt-v3.md
+letsgo-base-prompt-v4.md
+letsgo-base-prompt-final.md
+riya-agent-prompt.md
+Outbound Call.json
+Travel_BPO_Outbound_Call_Scenarios_SOP_Blueprint.md
+CLAUDE.md
+Prompt.pdf

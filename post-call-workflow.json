@@ -1,0 +1,381 @@
+{
+  "name": "SafarSathi | Post-Call: HL Webhook → GPT Extract → Google Sheets Update",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## POST-CALL WORKFLOW\n### Flow: Hooman Labs fires webhook → GPT extracts qualification data → Update Google Sheet row\n\n**Setup required:**\n- Copy the webhook URL from the 'Call Report Webhook' node and paste it into your Hooman Labs agent's webhook config\n- Set your Google Sheet ID in 'Update Lead in CRM' node\n- Set your OpenAI API key in 'Extract Qualification Data' node\n- Match columns to your sheet exactly",
+        "height": 260,
+        "width": 700,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [-640, -80],
+      "typeVersion": 1,
+      "id": "sticky-setup-post",
+      "name": "Setup Notes"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "safarsathi-call-report",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-640, 240],
+      "id": "call-report-webhook",
+      "name": "Call Report Webhook",
+      "webhookId": "safarsathi-call-report"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "OK",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [-380, 80],
+      "id": "respond-200",
+      "name": "Respond 200 OK"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "extract-lead-id",
+              "name": "leadID",
+              "value": "={{ $json.body.context?.leadID ?? $json.body.task?.context?.leadID ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "extract-lead-name",
+              "name": "leadName",
+              "value": "={{ $json.body.context?.leadName ?? $json.body.task?.context?.leadName ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "extract-lead-phone",
+              "name": "leadPhoneNumber",
+              "value": "={{ $json.body.context?.leadPhoneNumber ?? $json.body.task?.context?.leadPhoneNumber ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "extract-transcript",
+              "name": "transcript",
+              "value": "={{ $json.body.conversation?.transcript ?? $json.body.transcript ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "extract-end-reason",
+              "name": "endReason",
+              "value": "={{ $json.body.endedReason ?? $json.body.conversation?.endedReason ?? 'unknown' }}",
+              "type": "string"
+            },
+            {
+              "id": "extract-duration",
+              "name": "durationSeconds",
+              "value": "={{ $json.body.durationSeconds ?? $json.body.conversation?.durationSeconds ?? 0 }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-380, 240],
+      "id": "extract-call-data",
+      "name": "Extract Call Data"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-transcript",
+              "leftValue": "={{ $json.transcript }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "isNotEmpty"
+              }
+            },
+            {
+              "id": "check-duration",
+              "leftValue": "={{ $json.durationSeconds }}",
+              "rightValue": 8,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-120, 240],
+      "id": "was-call-answered",
+      "name": "Call Answered & Has Transcript?"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4.1-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "# Role\nYou are an expert call analyst for a travel agency. Analyze the conversation transcript and extract structured qualification data in JSON format.\n\n# Instructions\n- Base your analysis ONLY on what was said in the transcript\n- If a field was not discussed or is unclear, use the default value specified\n- For qualificationStatus, use these criteria:\n  - **Hot**: Specific destination + dates + budget shared, clearly interested\n  - **Warm**: Interested but missing 1-2 key details, or wants callback\n  - **Cold**: Very vague, no clear interest, or just exploring\n  - **Not Interested**: Explicitly said not interested or declined\n  - **No Answer**: Call not picked up, went to voicemail, or call too short\n  - **Wrong Number**: Confirmed not the right person\n  - **Callback Requested**: Asked to be called back at a specific time\n\n# Response Format (strict JSON only, no markdown)\n{\n  \"destination\": \"string — city/country or 'Not decided'\",\n  \"travelMonth\": \"string — month/season or 'Not decided'\",\n  \"groupType\": \"solo | couple | family | friends | corporate | unknown\",\n  \"numberOfTravelers\": \"string — number or range, e.g. '4' or '2-3', or 'Not shared'\",\n  \"budgetPerPerson\": \"string — e.g. '₹50k-1L' or 'Not shared'\",\n  \"tripType\": \"honeymoon | family | adventure | pilgrimage | leisure | corporate | not_specified\",\n  \"qualificationStatus\": \"Hot | Warm | Cold | Not Interested | No Answer | Wrong Number | Callback Requested\",\n  \"callbackTime\": \"string — e.g. 'Tomorrow 5 PM IST' or null\",\n  \"callPickedUp\": \"true | false\",\n  \"notes\": \"string — any key context: preferred contact method, objections, special requirements, etc.\"\n}"
+            },
+            {
+              "role": "user",
+              "content": "=Transcript:\n```\n{{ $json.transcript }}\n```\n\nCall ended reason: {{ $json.endReason }}\nCall duration: {{ $json.durationSeconds }} seconds"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [140, 160],
+      "id": "extract-qualification-data",
+      "name": "Extract Qualification Data",
+      "credentials": {
+        "openAiApi": {
+          "id": "YOUR_OPENAI_CREDENTIAL_ID",
+          "name": "OpenAI | SafarSathi"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "no-answer-status",
+              "name": "qualificationStatus",
+              "value": "=No Answer",
+              "type": "string"
+            },
+            {
+              "id": "no-answer-pickup",
+              "name": "callPickedUp",
+              "value": "=false",
+              "type": "string"
+            },
+            {
+              "id": "no-answer-notes",
+              "name": "notes",
+              "value": "={{ $json.endReason }}",
+              "type": "string"
+            },
+            {
+              "id": "no-answer-destination",
+              "name": "destination",
+              "value": "=N/A",
+              "type": "string"
+            },
+            {
+              "id": "no-answer-month",
+              "name": "travelMonth",
+              "value": "=N/A",
+              "type": "string"
+            },
+            {
+              "id": "no-answer-group",
+              "name": "groupType",
+              "value": "=unknown",
+              "type": "string"
+            },
+            {
+              "id": "no-answer-travelers",
+              "name": "numberOfTravelers",
+              "value": "=N/A",
+              "type": "string"
+            },
+            {
+              "id": "no-answer-budget",
+              "name": "budgetPerPerson",
+              "value": "=N/A",
+              "type": "string"
+            },
+            {
+              "id": "no-answer-type",
+              "name": "tripType",
+              "value": "=not_specified",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [140, 400],
+      "id": "set-no-answer-defaults",
+      "name": "Set No-Answer Defaults"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Leads",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Status": "Called",
+            "Call Picked Up": "={{ $json.callPickedUp }}",
+            "Qualification Status": "={{ $json.qualificationStatus }}",
+            "Destination": "={{ $json.destination }}",
+            "Travel Month": "={{ $json.travelMonth }}",
+            "Group Type": "={{ $json.groupType }}",
+            "No. of Travelers": "={{ $json.numberOfTravelers }}",
+            "Budget Per Person": "={{ $json.budgetPerPerson }}",
+            "Trip Type": "={{ $json.tripType }}",
+            "Callback Time": "={{ $json.callbackTime ?? '' }}",
+            "Call End Reason": "={{ $('Extract Call Data').item.json.endReason }}",
+            "Call Duration (s)": "={{ $('Extract Call Data').item.json.durationSeconds }}",
+            "Notes": "={{ $json.notes }}",
+            "Updated At": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": ["ID"],
+          "schema": [
+            { "id": "ID", "displayName": "ID", "required": true, "defaultMatch": true, "display": true, "type": "string", "canBeUsedToMatch": true },
+            { "id": "Status", "displayName": "Status", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "Call Picked Up", "displayName": "Call Picked Up", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "Qualification Status", "displayName": "Qualification Status", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "Destination", "displayName": "Destination", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "Travel Month", "displayName": "Travel Month", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "Group Type", "displayName": "Group Type", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "No. of Travelers", "displayName": "No. of Travelers", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "Budget Per Person", "displayName": "Budget Per Person", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "Trip Type", "displayName": "Trip Type", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "Callback Time", "displayName": "Callback Time", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "Call End Reason", "displayName": "Call End Reason", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "Call Duration (s)", "displayName": "Call Duration (s)", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "Notes", "displayName": "Notes", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "Updated At", "displayName": "Updated At", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [420, 280],
+      "id": "update-lead-crm",
+      "name": "Update Lead in CRM",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets | SafarSathi"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## CALL ANSWERED PATH\nIf transcript exists and call lasted >8 seconds:\n→ GPT-4.1-mini reads the full transcript\n→ Extracts 9 structured fields\n→ Updates Google Sheet row matched by leadID",
+        "height": 200,
+        "width": 320,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [140, -80],
+      "typeVersion": 1,
+      "id": "sticky-answered",
+      "name": "Answered Path Note"
+    },
+    {
+      "parameters": {
+        "content": "## NO ANSWER PATH\nIf call was not picked up or duration <8s:\n→ Skip GPT (nothing to analyze)\n→ Set status to 'No Answer'\n→ Still update sheet so we know it was attempted",
+        "height": 200,
+        "width": 320,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [140, 560],
+      "typeVersion": 1,
+      "id": "sticky-no-answer",
+      "name": "No Answer Path Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Call Report Webhook": {
+      "main": [
+        [
+          { "node": "Respond 200 OK", "type": "main", "index": 0 },
+          { "node": "Extract Call Data", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Extract Call Data": {
+      "main": [
+        [
+          { "node": "Call Answered & Has Transcript?", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Call Answered & Has Transcript?": {
+      "main": [
+        [
+          { "node": "Extract Qualification Data", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Set No-Answer Defaults", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Extract Qualification Data": {
+      "main": [
+        [
+          { "node": "Update Lead in CRM", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Set No-Answer Defaults": {
+      "main": [
+        [
+          { "node": "Update Lead in CRM", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "versionId": "safarsathi-post-call-v1",
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": "safarsathi-travels"
+  },
+  "id": "safarsathi-post-call",
+  "tags": ["safarsathi", "travel", "outbound"]
+}

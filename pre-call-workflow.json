@@ -1,0 +1,369 @@
+{
+  "name": "SafarSathi | Pre-Call: Google Sheets → Hooman Labs Task",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## PRE-CALL WORKFLOW\n### Flow: New lead in Google Sheets → Create HL Task → Update row status\n\n**Setup required:**\n- Set your Google Sheet ID in 'Get New Leads' node\n- Set your Hooman Labs Agent ID + Phone Number ID in 'Prepare Call Data'\n- Set your Hooman Labs API key in HTTP Request credentials\n- Sheet must have columns: ID, Name, Phone Number, Status",
+        "height": 260,
+        "width": 700,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [-640, -80],
+      "typeVersion": 1,
+      "id": "sticky-setup",
+      "name": "Setup Notes"
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Leads",
+          "mode": "name"
+        },
+        "event": "rowAdded",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTrigger",
+      "typeVersion": 4,
+      "position": [-640, 240],
+      "id": "google-sheets-trigger",
+      "name": "New Lead Added",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets | SafarSathi"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-status",
+              "leftValue": "={{ $json['Status'] }}",
+              "rightValue": "New",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "check-phone",
+              "leftValue": "={{ $json['Phone Number'] }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "isNotEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-380, 240],
+      "id": "check-new-lead",
+      "name": "Is New Lead?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "lead-id",
+              "name": "leadID",
+              "value": "={{ $json['ID'] }}",
+              "type": "string"
+            },
+            {
+              "id": "lead-name",
+              "name": "leadName",
+              "value": "={{ $json['Name'].split(' ')[0] }}",
+              "type": "string"
+            },
+            {
+              "id": "lead-phone",
+              "name": "leadPhoneNumber",
+              "value": "=+91{{ $json['Phone Number'].toString().replace(/[^0-9]/g, '').slice(-10) }}",
+              "type": "string"
+            },
+            {
+              "id": "agent-id",
+              "name": "agentID",
+              "value": "YOUR_HL_AGENT_ID",
+              "type": "string"
+            },
+            {
+              "id": "from-number",
+              "name": "fromNumber",
+              "value": "YOUR_HL_PHONE_NUMBER",
+              "type": "string"
+            },
+            {
+              "id": "row-number",
+              "name": "rowNumber",
+              "value": "={{ $json['row_number'] }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-120, 160],
+      "id": "prepare-call-data",
+      "name": "Prepare Call Data"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hoomanlabs.com/routes/v1/tasks/",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $credentials.value }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"phone\": \"{{ $json.leadPhoneNumber }}\",\n  \"agent\": \"{{ $json.agentID }}\",\n  \"campaign\": \"YOUR_CAMPAIGN_ID\",\n  \"from\": \"{{ $json.fromNumber }}\",\n  \"timezone\": \"Asia/Kolkata\",\n  \"start\": 1000,\n  \"end\": 1900,\n  \"retries\": 3,\n  \"priorities\": [3, 2, 1],\n  \"intervals\": [1800000, 3600000],\n  \"context\": {\n    \"name\": \"{{ $json.leadName }}\",\n    \"leadId\": \"{{ $json.leadID }}\"\n  }\n}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [140, 160],
+      "id": "create-hl-task",
+      "name": "Create HL Task",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_HL_CREDENTIAL_ID",
+          "name": "Hooman Labs | SafarSathi"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Leads",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Status": "Call Scheduled",
+            "HL Task ID": "={{ $json.body.id }}",
+            "Scheduled At": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": ["ID"],
+          "schema": [
+            {
+              "id": "ID",
+              "displayName": "ID",
+              "required": true,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "HL Task ID",
+              "displayName": "HL Task ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Scheduled At",
+              "displayName": "Scheduled At",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [400, 160],
+      "id": "update-lead-scheduled",
+      "name": "Mark as Call Scheduled",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets | SafarSathi"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [-120, 400],
+      "id": "skip-lead",
+      "name": "Skip (Not New / No Phone)"
+    },
+    {
+      "parameters": {
+        "content": "## TRIGGER\nGoogle Sheets fires every time a new row is added to the 'Leads' sheet.\n\nPolls every minute — adjust as needed.",
+        "height": 180,
+        "width": 260
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [-640, 380],
+      "typeVersion": 1,
+      "id": "sticky-trigger",
+      "name": "Trigger Note"
+    },
+    {
+      "parameters": {
+        "content": "## GUARD\nOnly process leads where:\n- Status = 'New'\n- Phone Number is not empty\n\nThis prevents duplicate calls if the workflow fires multiple times.",
+        "height": 200,
+        "width": 280
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [-380, 380],
+      "typeVersion": 1,
+      "id": "sticky-guard",
+      "name": "Guard Note"
+    },
+    {
+      "parameters": {
+        "content": "## HL TASK CONFIG\n- timezone: Asia/Kolkata\n- Calls between 10 AM – 7 PM IST (1000–1900)\n- 3 total attempts: initial + 2 retries\n- Retry on no-answer and voicemail\n- Retry gaps: 30 min, then 1 hour\n- Context passes leadID, leadName, leadPhoneNumber to agent",
+        "height": 260,
+        "width": 300
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [140, -80],
+      "typeVersion": 1,
+      "id": "sticky-task-config",
+      "name": "Task Config Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Lead Added": {
+      "main": [
+        [
+          {
+            "node": "Is New Lead?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is New Lead?": {
+      "main": [
+        [
+          {
+            "node": "Prepare Call Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Skip (Not New / No Phone)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Call Data": {
+      "main": [
+        [
+          {
+            "node": "Create HL Task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create HL Task": {
+      "main": [
+        [
+          {
+            "node": "Mark as Call Scheduled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "safarsathi-pre-call-v1",
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": "safarsathi-travels"
+  },
+  "id": "safarsathi-pre-call",
+  "tags": ["safarsathi", "travel", "outbound"]
+}
